@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>99 Nights - Survival Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <div id="day-info">
+                <div id="day-display">Day 1</div>
+                <div id="time-display">Night 00:00</div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="left-panel">
+                <div class="stat-box">
+                    <div class="stat-label">❤️ Health</div>
+                    <div class="stat-bar">
+                        <div id="health-fill" class="bar-fill" style="width: 100%"></div>
+                    </div>
+                    <div id="health-text">100 / 100</div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="stat-label">🍖 Hunger</div>
+                    <div class="stat-bar">
+                        <div id="hunger-fill" class="bar-fill" style="width: 80%"></div>
+                    </div>
+                    <div id="hunger-text">80 / 100</div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="stat-label">🪵 Wood</div>
+                    <div id="wood-count">0</div>
+                </div>
+
+                <div class="stat-box">
+                    <div class="stat-label">🔥 Fire Level</div>
+                    <div class="stat-bar">
+                        <div id="fire-fill" class="bar-fill" style="width: 100%"></div>
+                    </div>
+                    <div id="fire-text">20 / 20</div>
+                </div>
+            </div>
+
+            <div id="center-panel">
+                <canvas id="game-canvas" width="800" height="600"></canvas>
+            </div>
+
+            <div id="right-panel">
+                <div id="objectives-box">
+                    <h3>Objectives</h3>
+                    <ul>
+                        <li>✓ Build your campfire</li>
+                        <li>✓ Survive the night</li>
+                        <li>✓ Defeat enemies</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div id="bottom-panel">
+            <div id="controls-box">
+                <h3>Controls</h3>
+                <p>WASD - Move | E - Chop | B - Wall | F - Wood</p>
+                <p>CLICK - Attack | ESC - Menu</p>
+            </div>
+
+            <div id="hotbar"></div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
