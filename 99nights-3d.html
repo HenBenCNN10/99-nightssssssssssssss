@@ -24,43 +24,44 @@
 
         #renderCanvas {
             width: 100%;
-            height: calc(100% - 120px);
+            height: calc(100% - 60px);
             display: block;
             touch-action: none;
         }
 
         #ui-panel {
-            height: 120px;
-            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
-            border-top: 2px solid #d4af37;
-            padding: 10px 20px;
+            height: 60px;
+            background: linear-gradient(to bottom, rgba(42,42,42,0.9), rgba(26,26,26,0.9));
+            border-top: 1px solid #d4af37;
+            padding: 8px 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 14px;
+            font-size: 12px;
             color: #d4af37;
         }
 
         .stat-section {
             display: flex;
-            gap: 20px;
+            gap: 15px;
+            align-items: center;
         }
 
         .stat {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 2px;
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
 
         .stat-bar {
-            width: 150px;
-            height: 15px;
+            width: 80px;
+            height: 10px;
             background-color: #333;
             border: 1px solid #666;
             border-radius: 2px;
@@ -76,14 +77,20 @@
         #hunger-bar { background: linear-gradient(to right, #8844ff, #ff8844) !important; }
         #fire-bar { background: linear-gradient(to right, #ffaa00, #ff4400) !important; }
 
+        .stat-value {
+            font-size: 9px;
+            color: #aaa;
+        }
+
         .controls {
-            font-size: 12px;
+            font-size: 9px;
             color: #888;
             text-align: right;
         }
 
         .controls p {
-            margin: 3px 0;
+            margin: 2px 0;
+            line-height: 1.2;
         }
 
         #gameOverScreen {
@@ -138,6 +145,16 @@
             text-align: center;
             z-index: 999;
         }
+
+        .day-info {
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .day-info div:first-child {
+            font-size: 14px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -146,40 +163,38 @@
     <div id="ui-panel">
         <div class="stat-section">
             <div class="stat">
-                <div class="stat-label">❤️ Health</div>
+                <div class="stat-label">❤️ HP</div>
                 <div class="stat-bar">
                     <div id="health-bar" class="bar-fill" style="width: 100%"></div>
                 </div>
-                <div id="health-text" style="font-size: 11px;">100 / 100</div>
+                <div id="health-text" class="stat-value">100/100</div>
             </div>
             <div class="stat">
                 <div class="stat-label">🍖 Hunger</div>
                 <div class="stat-bar">
                     <div id="hunger-bar" class="bar-fill" style="width: 80%"></div>
                 </div>
-                <div id="hunger-text" style="font-size: 11px;">80 / 100</div>
+                <div id="hunger-text" class="stat-value">80/100</div>
             </div>
             <div class="stat">
                 <div class="stat-label">🔥 Fire</div>
                 <div class="stat-bar">
                     <div id="fire-bar" class="bar-fill" style="width: 100%"></div>
                 </div>
-                <div id="fire-text" style="font-size: 11px;">20 / 20</div>
+                <div id="fire-text" class="stat-value">20/20</div>
             </div>
             <div class="stat">
                 <div class="stat-label">🪵 Wood</div>
-                <div id="wood-count" style="font-size: 18px; font-weight: bold;">0</div>
+                <div id="wood-count" style="font-size: 14px; font-weight: bold;">0</div>
             </div>
         </div>
-        <div class="stat-section">
-            <div style="text-align: center;">
-                <div id="day-display" style="font-size: 20px; font-weight: bold;">Day 1</div>
-                <div id="time-display" style="font-size: 12px; color: #888;">Day 00:00</div>
-            </div>
+        <div class="day-info">
+            <div id="day-display">Day 1</div>
+            <div id="time-display" style="font-size: 10px; color: #888;">Day 00:00</div>
         </div>
         <div class="controls">
-            <p><strong>WASD</strong> - Move | <strong>Mouse</strong> - Look | <strong>Click</strong> - Attack</p>
-            <p><strong>E</strong> - Chop | <strong>F</strong> - Add Wood | <strong>B</strong> - Build Wall</p>
+            <p><strong>WASD</strong> Move | <strong>Click</strong> Attack | <strong>E</strong> Chop</p>
+            <p><strong>F</strong> Fire | <strong>B</strong> Build | <strong>Mouse</strong> Look</p>
         </div>
     </div>
     <div id="gameOverScreen">
@@ -192,7 +207,7 @@
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
 
-        let scene, camera, playerMesh, ground, treeModel, skybox;
+        let scene, camera, playerMesh, ground;
         let game = {
             day: 1,
             cycleTime: 0,
@@ -231,49 +246,12 @@
             spawnCounter: 0
         };
 
-        function createSkybox(scene) {
-            // Create a procedural skybox using a dynamic texture
-            skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
-            
-            const skyMaterial = new BABYLON.StandardMaterial("skyMaterial", scene);
-            skyMaterial.backFaceCulling = false;
-            
-            // Create a dynamic texture for the sky
-            const skyTexture = new BABYLON.DynamicTexture("skyTexture", 512, scene);
-            const ctx = skyTexture.getContext();
-            
-            // Day sky gradient
-            const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-            gradient.addColorStop(0, '#87CEEB');  // Sky blue
-            gradient.addColorStop(0.5, '#E0F6FF'); // Light blue
-            gradient.addColorStop(1, '#90EE90');   // Green (horizon)
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 512, 512);
-            
-            // Add some clouds
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            for (let i = 0; i < 5; i++) {
-                ctx.beginPath();
-                ctx.arc(Math.random() * 512, Math.random() * 200, 50, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            
-            skyTexture.update();
-            skyMaterial.emissiveTexture = skyTexture;
-            
-            skybox.material = skyMaterial;
-            skybox.position = camera.position.clone();
-            
-            return skybox;
-        }
-
         async function createScene() {
             scene = new BABYLON.Scene(engine);
             scene.collisionsEnabled = true;
             scene.gravity = new BABYLON.Vector3(0, -0.15, 0);
 
-            // Initial sky color
+            // Sky blue background
             scene.clearColor = new BABYLON.Color3(0.53, 0.81, 0.92);
 
             const light = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
@@ -283,8 +261,6 @@
             const sunLight = new BABYLON.DirectionalLight("sunLight", new BABYLON.Vector3(-0.5, -1, -0.5), scene);
             sunLight.intensity = 0.7;
             sunLight.range = 300;
-            sunLight.shadowMinZ = 1;
-            sunLight.shadowMaxZ = 500;
 
             camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0));
             camera.attachControl(canvas, true);
@@ -292,21 +268,13 @@
             camera.angularSensibility = 1000;
             camera.inertia = 0.7;
 
-            // Ground with better material
+            // Ground
             ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 300, height: 300}, scene);
             const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
             groundMat.diffuse = new BABYLON.Color3(0.2, 0.5, 0.15);
             groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
             ground.material = groundMat;
             ground.checkCollisions = true;
-
-            // Add distant mountains/terrain backdrop (scrolling with camera)
-            const mountainBack = BABYLON.MeshBuilder.CreateBox("mountainBack", {width: 400, height: 150, depth: 50}, scene);
-            mountainBack.position = new BABYLON.Vector3(0, 40, 300);
-            const mountainMat = new BABYLON.StandardMaterial("mountainMat", scene);
-            mountainMat.diffuse = new BABYLON.Color3(0.3, 0.4, 0.2);
-            mountainMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
-            mountainBack.material = mountainMat;
 
             // Player mesh
             const playerBody = BABYLON.MeshBuilder.CreateCylinder("playerBody", {diameter: 0.8, height: 1.8, tessellation: 16}, scene);
@@ -334,7 +302,6 @@
             const fireMat = new BABYLON.StandardMaterial("fireMat", scene);
             fireMat.emissiveColor = new BABYLON.Color3(1, 0.6, 0);
             fireMat.diffuse = new BABYLON.Color3(1, 0.5, 0);
-            fireMat.specularColor = new BABYLON.Color3(1, 1, 1);
             fireMesh.material = fireMat;
 
             const fireLight = new BABYLON.PointLight("fireLight", game.camp.position, scene);
@@ -343,19 +310,7 @@
             fireLight.diffuse = new BABYLON.Color3(1, 0.7, 0.3);
             game.camp.fireLight = fireLight;
 
-            // Create skybox
-            createSkybox(scene);
-
             setupInput();
-
-            // Try to load Free3D tree model (optional)
-            try {
-                await BABYLON.SceneLoader.ImportMeshAsync("", "https://free3d.com/dl-files.php?p=5bac1d4126be8bb1658b4567&f=0", "", scene);
-                console.log("Tree model loaded");
-            } catch (e) {
-                console.log("Tree model failed to load, using fallback");
-            }
-
             game.modelsLoaded = true;
             document.getElementById('loading').style.display = 'none';
 
@@ -426,11 +381,6 @@
             game.player.mesh.position = camera.position.clone();
             game.player.mesh.position.y -= 0.8;
 
-            // Keep skybox centered on player
-            if (skybox) {
-                skybox.position = camera.position.clone();
-            }
-
             const maxDist = 120;
             const distFromCenter = BABYLON.Vector3.Distance(camera.position, game.camp.position);
             if (distFromCenter > maxDist) {
@@ -447,7 +397,6 @@
             const posX = game.camp.position.x + Math.cos(angle) * distance;
             const posZ = game.camp.position.z + Math.sin(angle) * distance;
 
-            // Create enemy billboard (sprite that faces camera)
             const plane = BABYLON.MeshBuilder.CreatePlane("enemy", {width: 3, height: 3}, scene);
             plane.position = new BABYLON.Vector3(posX, 1.5, posZ);
             plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
@@ -456,11 +405,9 @@
             enemyMat.emissiveColor = new BABYLON.Color3(1, 1, 1);
             enemyMat.backFaceCulling = false;
             
-            // Load enemy image from GitHub
             try {
                 enemyMat.emissiveTexture = new BABYLON.Texture("https://raw.githubusercontent.com/HenBenCNN10/99-nightssssssssssssss/main/e93a6de5-2cee-4f72-ae40-a225b739379e.png", scene);
             } catch (e) {
-                console.log("Enemy texture failed to load");
                 enemyMat.diffuse = new BABYLON.Color3(0.7, 0.2, 0.2);
             }
             
@@ -645,13 +592,13 @@
             const phase = game.isNight ? 'Night' : 'Day';
             document.getElementById('time-display').textContent = `${phase} ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-            document.getElementById('health-text').textContent = `${Math.floor(game.player.health)} / 100`;
+            document.getElementById('health-text').textContent = `${Math.floor(game.player.health)}/100`;
             document.getElementById('health-bar').style.width = (game.player.health) + '%';
 
-            document.getElementById('hunger-text').textContent = `${Math.floor(game.resources.hunger)} / 100`;
+            document.getElementById('hunger-text').textContent = `${Math.floor(game.resources.hunger)}/100`;
             document.getElementById('hunger-bar').style.width = (game.resources.hunger) + '%';
 
-            document.getElementById('fire-text').textContent = `${Math.floor(game.resources.fireLevel)} / 20`;
+            document.getElementById('fire-text').textContent = `${Math.floor(game.resources.fireLevel)}/20`;
             document.getElementById('fire-bar').style.width = (game.resources.fireLevel / game.resources.maxFireLevel * 100) + '%';
 
             document.getElementById('wood-count').textContent = game.resources.wood;
@@ -660,7 +607,6 @@
         async function main() {
             await createScene();
             
-            // Create initial trees
             for (let i = 0; i < 20; i++) {
                 createTree(scene);
             }
