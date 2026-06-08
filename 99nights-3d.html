@@ -192,7 +192,7 @@
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
 
-        let scene, camera, playerMesh, ground, treeModel;
+        let scene, camera, playerMesh, ground, treeModel, skybox;
         let game = {
             day: 1,
             cycleTime: 0,
@@ -231,12 +231,50 @@
             spawnCounter: 0
         };
 
+        function createSkybox(scene) {
+            // Create a procedural skybox using a dynamic texture
+            skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000}, scene);
+            
+            const skyMaterial = new BABYLON.StandardMaterial("skyMaterial", scene);
+            skyMaterial.backFaceCulling = false;
+            
+            // Create a dynamic texture for the sky
+            const skyTexture = new BABYLON.DynamicTexture("skyTexture", 512, scene);
+            const ctx = skyTexture.getContext();
+            
+            // Day sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+            gradient.addColorStop(0, '#87CEEB');  // Sky blue
+            gradient.addColorStop(0.5, '#E0F6FF'); // Light blue
+            gradient.addColorStop(1, '#90EE90');   // Green (horizon)
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // Add some clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * 512, Math.random() * 200, 50, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            skyTexture.update();
+            skyMaterial.emissiveTexture = skyTexture;
+            
+            skybox.material = skyMaterial;
+            skybox.position = camera.position.clone();
+            
+            return skybox;
+        }
+
         async function createScene() {
             scene = new BABYLON.Scene(engine);
             scene.collisionsEnabled = true;
             scene.gravity = new BABYLON.Vector3(0, -0.15, 0);
 
-            scene.clearColor = new BABYLON.Color3(0.5, 0.7, 1);
+            // Initial sky color
+            scene.clearColor = new BABYLON.Color3(0.53, 0.81, 0.92);
 
             const light = new BABYLON.HemisphericLight("hemiLight", new BABYLON.Vector3(0, 1, 0), scene);
             light.intensity = 0.9;
@@ -245,6 +283,8 @@
             const sunLight = new BABYLON.DirectionalLight("sunLight", new BABYLON.Vector3(-0.5, -1, -0.5), scene);
             sunLight.intensity = 0.7;
             sunLight.range = 300;
+            sunLight.shadowMinZ = 1;
+            sunLight.shadowMaxZ = 500;
 
             camera = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 1.7, 0));
             camera.attachControl(canvas, true);
@@ -252,12 +292,21 @@
             camera.angularSensibility = 1000;
             camera.inertia = 0.7;
 
+            // Ground with better material
             ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 300, height: 300}, scene);
             const groundMat = new BABYLON.StandardMaterial("groundMat", scene);
             groundMat.diffuse = new BABYLON.Color3(0.2, 0.5, 0.15);
             groundMat.specularColor = new BABYLON.Color3(0.1, 0.1, 0.1);
             ground.material = groundMat;
             ground.checkCollisions = true;
+
+            // Add distant mountains/terrain backdrop (scrolling with camera)
+            const mountainBack = BABYLON.MeshBuilder.CreateBox("mountainBack", {width: 400, height: 150, depth: 50}, scene);
+            mountainBack.position = new BABYLON.Vector3(0, 40, 300);
+            const mountainMat = new BABYLON.StandardMaterial("mountainMat", scene);
+            mountainMat.diffuse = new BABYLON.Color3(0.3, 0.4, 0.2);
+            mountainMat.specularColor = new BABYLON.Color3(0.05, 0.05, 0.05);
+            mountainBack.material = mountainMat;
 
             // Player mesh
             const playerBody = BABYLON.MeshBuilder.CreateCylinder("playerBody", {diameter: 0.8, height: 1.8, tessellation: 16}, scene);
@@ -294,15 +343,12 @@
             fireLight.diffuse = new BABYLON.Color3(1, 0.7, 0.3);
             game.camp.fireLight = fireLight;
 
-            const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
-            const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
-            skyboxMaterial.backFaceCulling = false;
-            skyboxMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.7, 1);
-            skybox.material = skyboxMaterial;
+            // Create skybox
+            createSkybox(scene);
 
             setupInput();
 
-            // Load Free3D tree model
+            // Try to load Free3D tree model (optional)
             try {
                 await BABYLON.SceneLoader.ImportMeshAsync("", "https://free3d.com/dl-files.php?p=5bac1d4126be8bb1658b4567&f=0", "", scene);
                 console.log("Tree model loaded");
@@ -380,6 +426,11 @@
             game.player.mesh.position = camera.position.clone();
             game.player.mesh.position.y -= 0.8;
 
+            // Keep skybox centered on player
+            if (skybox) {
+                skybox.position = camera.position.clone();
+            }
+
             const maxDist = 120;
             const distFromCenter = BABYLON.Vector3.Distance(camera.position, game.camp.position);
             if (distFromCenter > maxDist) {
@@ -406,12 +457,12 @@
             enemyMat.backFaceCulling = false;
             
             // Load enemy image from GitHub
-            enemyMat.emissiveTexture = new BABYLON.DynamicTexture("enemyTexture", 512);
-            const ctx = enemyMat.emissiveTexture.getContext();
-            ctx.drawImage(new Image(), 0, 0);
-            
-            // Alternative: use raw image URL from GitHub
-            enemyMat.emissiveTexture = new BABYLON.Texture("https://raw.githubusercontent.com/HenBenCNN10/99-nightssssssssssssss/main/e93a6de5-2cee-4f72-ae40-a225b739379e.png", scene);
+            try {
+                enemyMat.emissiveTexture = new BABYLON.Texture("https://raw.githubusercontent.com/HenBenCNN10/99-nightssssssssssssss/main/e93a6de5-2cee-4f72-ae40-a225b739379e.png", scene);
+            } catch (e) {
+                console.log("Enemy texture failed to load");
+                enemyMat.diffuse = new BABYLON.Color3(0.7, 0.2, 0.2);
+            }
             
             plane.material = enemyMat;
             plane.checkCollisions = true;
@@ -525,7 +576,7 @@
             } else {
                 sunLight.intensity = 0.7;
                 hemiLight.intensity = 0.9;
-                scene.clearColor = new BABYLON.Color3(0.5, 0.7, 1);
+                scene.clearColor = new BABYLON.Color3(0.53, 0.81, 0.92);
                 game.camp.fireLight.intensity = 0.8;
             }
 
